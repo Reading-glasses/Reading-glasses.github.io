@@ -16,10 +16,10 @@ jobs:
           echo "<!DOCTYPE html>" > index.html
           echo "<html><head><meta charset='utf-8'><title>导航</title></head><body>" >> index.html
           echo "<h1>所有页面导航</h1><ul>" >> index.html
-          # 保留完整路径作为 href，但显示时去掉 .html
-          for file in $(find . -name "*.html" | sed 's|^\./||' | grep -v "index.html"); do
-            name=$(basename "$file" .html)   # 去掉 .html
-            echo "<li><a href='$file'>$name</a></li>" >> index.html
+          # 正确处理文件名：保留完整名称，去掉 .html 后缀
+          for file in $(find . -type f -name "*.html" | sed 's|^\./||' | grep -v "index.html"); do
+            name=$(echo "$file" | sed 's/\.html$//')   # 去掉 .html 后缀，但保留完整名字
+            echo "<li><a href=\"$file\">$name</a></li>" >> index.html
           done
           echo "</ul></body></html>" >> index.html
 
