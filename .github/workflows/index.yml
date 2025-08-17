@@ -1,9 +1,9 @@
-name: Generate Index & Random Internal Links
+name: Generate Index & Random Internal Links Optimized
 
 on:
   push:
     branches:
-      - main  # 如果默认分支是 master，请改成 master
+      - main
 
 jobs:
   build:
@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Generate index and internal links
+      - name: Generate index and optimized internal links
         run: |
           # 收集所有 HTML 文件
           mapfile -d '' files < <(find . -type f -name "*.html" ! -name "index.html" -print0)
@@ -27,14 +27,14 @@ jobs:
           done
           echo "</ul></body></html>" >> index.html
 
-          # 在每个 HTML 文件底部添加随机内部链接
+          # 每个 HTML 页面底部添加随机内部链接
           for file in "${files[@]}"; do
             file="${file#./}"
 
             # 移除已有 internal-links 区块，避免重复
             sed -i '/<!-- internal-links start -->/,/<!-- internal-links end -->/d' "$file"
 
-            # 构造随机选择的 3-5 个其他页面
+            # 构建候选链接数组（排除自己）
             other_links=()
             for link in "${files[@]}"; do
               link="${link#./}"
@@ -66,7 +66,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html
           git add *.html
-          git diff --cached --quiet || git commit -m "Auto update index.html and random internal links"
+          git diff --cached --quiet || git commit -m "Auto update index.html and optimized internal links"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
