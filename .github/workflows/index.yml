@@ -1,4 +1,4 @@
-name: Generate Index & Random Internal Links Optimized
+name: Generate Index & Random Internal Links with URL Encoding
 
 on:
   push:
@@ -11,23 +11,26 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Generate index and optimized internal links
+      - name: Generate index and internal links
         run: |
-          # 收集所有 HTML 文件
+          # 收集所有 HTML 文件（排除 index.html）
           mapfile -d '' files < <(find . -type f -name "*.html" ! -name "index.html" -print0)
 
           # 生成 index.html（完整导航）
-          echo "<!DOCTYPE html>" > index.html
-          echo "<html><head><meta charset='utf-8'><title>reading glasses</title></head><body>" >> index.html
-          echo "<h1>reading glasses</h1><ul>" >> index.html
-          for file in "${files[@]}"; do
-            file="${file#./}"
-            name=$(echo "$file" | sed 's/\.html$//')
-            echo "<li><a href=\"$file\">$name</a></li>" >> index.html
-          done
-          echo "</ul></body></html>" >> index.html
+          {
+            echo "<!DOCTYPE html>"
+            echo "<html><head><meta charset='utf-8'><title>reading glasses</title></head><body>"
+            echo "<h1>reading glasses</h1><ul>"
+            for file in "${files[@]}"; do
+              file="${file#./}"                # 去掉 ./ 前缀
+              name="${file%.html}"             # 去掉 .html 后缀，保留空格
+              url=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$file'))")
+              echo "<li><a href=\"$url\">$name</a></li>"
+            done
+            echo "</ul></body></html>"
+          } > index.html
 
-          # 每个 HTML 页面底部添加随机内部链接
+          # 在每个 HTML 文件底部添加随机内部链接
           for file in "${files[@]}"; do
             file="${file#./}"
 
@@ -46,18 +49,21 @@ jobs:
             # 打乱顺序
             shuffled=($(shuf -e "${other_links[@]}"))
 
-            # 取前 3-5 个随机链接
+            # 随机选 3-5 个链接
             count=$(shuf -i 3-5 -n 1)
             selected=("${shuffled[@]:0:$count}")
 
             # 写入 HTML
-            echo "<!-- internal-links start -->" >> "$file"
-            echo "<hr><h2>Other Pages</h2><ul>" >> "$file"
-            for link in "${selected[@]}"; do
-              name=$(echo "$link" | sed 's/\.html$//')
-              echo "<li><a href=\"$link\">$name</a></li>" >> "$file"
-            done
-            echo "</ul><!-- internal-links end -->" >> "$file"
+            {
+              echo "<!-- internal-links start -->"
+              echo "<hr><h2>Other Pages</h2><ul>"
+              for link in "${selected[@]}"; do
+                name="${link%.html}" 
+                url=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$link'))")
+                echo "<li><a href=\"$url\">$name</a></li>"
+              done
+              echo "</ul><!-- internal-links end -->"
+            } >> "$file"
           done
 
       - name: Commit changes
@@ -66,7 +72,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html
           git add *.html
-          git diff --cached --quiet || git commit -m "Auto update index.html and optimized internal links"
+          git diff --cached --quiet || git commit -m "Auto update index.html and random internal links with URL encoding"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
