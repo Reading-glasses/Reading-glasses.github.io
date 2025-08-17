@@ -3,7 +3,7 @@ name: Generate Index Page
 on:
   push:
     branches:
-      - main   # ⚠️ 如果你的默认分支是 master，这里改成 master
+      - main   # 如果默认分支是 master，请改成 master
 
 jobs:
   build:
@@ -16,8 +16,10 @@ jobs:
           echo "<!DOCTYPE html>" > index.html
           echo "<html><head><meta charset='utf-8'><title>导航</title></head><body>" >> index.html
           echo "<h1>所有页面导航</h1><ul>" >> index.html
+          # 保留完整路径作为 href，但显示时去掉 .html
           for file in $(find . -name "*.html" | sed 's|^\./||' | grep -v "index.html"); do
-            echo "<li><a href='$file'>$file</a></li>" >> index.html
+            name=$(basename "$file" .html)   # 去掉 .html
+            echo "<li><a href='$file'>$name</a></li>" >> index.html
           done
           echo "</ul></body></html>" >> index.html
 
