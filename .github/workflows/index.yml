@@ -14,10 +14,10 @@ jobs:
       - name: Generate index.html
         run: |
           echo "<!DOCTYPE html>" > index.html
-          echo "<html><head><meta charset='utf-8'><title>导航</title></head><body>" >> index.html
-          echo "<h1>所有页面导航</h1><ul>" >> index.html
+          echo "<html><head><meta charset='utf-8'><title>reading glasses</title></head><body>" >> index.html
+          echo "<h1>reading glasses</h1><ul>" >> index.html
 
-          # 用 NUL 分隔避免空格导致的问题
+          # 用 NUL 分隔处理文件名中空格
           find . -type f -name "*.html" ! -name "index.html" -print0 | while IFS= read -r -d '' file; do
             file="${file#./}"                     # 去掉开头的 ./
             name=$(echo "$file" | sed 's/\.html$//')   # 去掉 .html 后缀
