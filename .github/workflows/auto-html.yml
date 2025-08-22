@@ -1,43 +1,45 @@
-name: Auto update HTML from Google Drive
+name: Auto Download HTML from Google Drive
 
+# 手动触发 & 定时触发
 on:
+  workflow_dispatch:  # 手动触发
   schedule:
-    - cron: '0 */6 * * *'   # 每 6 小时自动运行一次
-  workflow_dispatch:         # 可手动触发
+    - cron: "0 2 * * *"  # 每天凌晨 2 点运行（可按需修改）
 
 jobs:
   update-html:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+    permissions:
+      contents: write  # 确保可以 push 文件到仓库
 
-      - name: Setup Python
+    steps:
+      # 1. 检出仓库代码
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. 设置 Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.11
+          python-version: "3.11"
 
+      # 3. 安装依赖
       - name: Install dependencies
-        run: |
-          pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib requests
+        run: pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
 
-      - name: Save Service Account
-        run: |
-          echo "${{ secrets.GDRIVE_SERVICE_ACCOUNT }}" > service-account.json
+      # 4. 运行 Python 下载脚本
+      - name: Run download_drive_html.py
+        env:
+          GDRIVE_SERVICE_ACCOUNT: ${{ secrets.GDRIVE_SERVICE_ACCOUNT }}  # 你的 Service Account JSON
+          GDRIVE_FILE_ID: "你的文件ID"  # 可在每次触发 workflow 时修改
+          GDRIVE_FILE_NAME: "index.html"  # 下载后的文件名
+        run: python download_drive_html.py
 
-      - name: Download Google Docs as HTML
-        run: |
-          python download_drive_html.py
-
-      - name: Generate index & internal links
-        run: |
-          bash generate_links.sh
-
-      - name: Commit & Push
+      # 5. 提交并 push 更新到 GitHub
+      - name: Commit & Push changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add *.html
-          git diff --cached --quiet || git commit -m "Auto update HTML and internal links"
+          git add .
+          git commit -m "Auto update HTML from Google Drive" || echo "No changes to commit"
           git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
