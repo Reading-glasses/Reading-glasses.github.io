@@ -1,42 +1,35 @@
-name: Auto Download HTML from Google Drive
+name: Auto Update HTML from Google Drive
 
-# 手动触发 & 定时触发
 on:
-  workflow_dispatch:  # 手动触发
+  workflow_dispatch:    # 手动触发
   schedule:
-    - cron: "0 2 * * *"  # 每天凌晨 2 点运行（可按需修改）
+    - cron: "0 */6 * * *"  # 每 6 小时自动运行一次
 
 jobs:
   update-html:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 确保可以 push 文件到仓库
+      contents: write
 
     steps:
-      # 1. 检出仓库代码
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. 设置 Python
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      # 3. 安装依赖
       - name: Install dependencies
         run: pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
 
-      # 4. 运行 Python 下载脚本
-      - name: Run download_drive_html.py
+      - name: Run Python script
         env:
-          GDRIVE_SERVICE_ACCOUNT: ${{ secrets.GDRIVE_SERVICE_ACCOUNT }}  # 你的 Service Account JSON
-          GDRIVE_FILE_ID: "你的文件ID"  # 可在每次触发 workflow 时修改
-          GDRIVE_FILE_NAME: "index.html"  # 下载后的文件名
+          GDRIVE_SERVICE_ACCOUNT: ${{ secrets.GDRIVE_SERVICE_ACCOUNT }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
         run: python download_drive_html.py
 
-      # 5. 提交并 push 更新到 GitHub
-      - name: Commit & Push changes
+      - name: Commit & push updates
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
