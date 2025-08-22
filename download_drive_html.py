@@ -161,8 +161,9 @@ print("✅ index.html (full site map) generated")
 all_html_files = [f for f in os.listdir(".") if f.endswith(".html") and f != "index.html"]
 
 for fname in all_html_files:
-    with open(fname, "r", encoding="utf-8") as f:
-        content = f.read()
+    with open(fname, "r", encoding="utf-8", errors="replace") as f:
+    content = f.read()
+
 
     # 排除当前页面，随机选择 4~6 条其他页面
     other_files = [x for x in all_html_files if x != fname]
