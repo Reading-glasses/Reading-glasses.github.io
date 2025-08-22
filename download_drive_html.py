@@ -1,30 +1,39 @@
 import os
 import json
 import sys
+import random
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 import io
 
-# 从环境变量中读取 Service Account JSON（Base64 或 JSON 字符串）
-service_account_info = os.getenv("GDRIVE_SERVICE_ACCOUNT")
-
+# 读取 Service Account JSON
+service_account_info = os.environ.get("GDRIVE_SERVICE_ACCOUNT")
 if not service_account_info:
-    print("❌ 没有找到环境变量 GDRIVE_SERVICE_ACCOUNT，请检查 GitHub Secrets 是否配置正确。")
+    print("❌ GDRIVE_SERVICE_ACCOUNT not found")
     sys.exit(1)
 
-try:
-    # 解析 JSON
-    service_account_info = json.loads(service_account_info)
-except json.JSONDecodeError:
-    print("❌ GDRIVE_SERVICE_ACCOUNT 格式错误，无法解析 JSON。")
-    sys.exit(1)
-
-# 初始化 Google Drive API
+service_account_info = json.loads(service_account_info)
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
-credentials = service_account.Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
-service = build('drive', 'v3', credentials=credentials)
+creds = service_account.Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
+service = build('drive', 'v3', credentials=creds)
 
+# 文件夹 ID
+FOLDER_ID = os.environ.get("GDRIVE_FOLDER_ID")
+if not FOLDER_ID:
+    print("❌ GDRIVE_FOLDER_ID not found")
+    sys.exit(1)
+
+# 获取 HTML 文件列表
+def list_html_files(folder_id):
+    results = service.files().list(
+        q=f"'{folder_id}' in parents and mimeType='text/html'",
+        pageSize=1000,
+        fields="files(id, name)"
+    ).execute()
+    return results.get('files', [])
+
+# 下载文件
 def download_file(file_id, file_name):
     request = service.files().get_media(fileId=file_id)
     fh = io.FileIO(file_name, 'wb')
@@ -32,17 +41,39 @@ def download_file(file_id, file_name):
     done = False
     while not done:
         status, done = downloader.next_chunk()
-        if status:
-            print(f"⬇️ Download {file_name}: {int(status.progress() * 100)}%")
-    print(f"✅ Download finished: {file_name}")
+    print(f"✅ Downloaded {file_name}")
 
+# 主程序
 if __name__ == "__main__":
-    # 用文件ID和文件名测试
-    FILE_ID = os.getenv("GDRIVE_FILE_ID")  # GitHub Actions 里也可以设置
-    FILE_NAME = os.getenv("GDRIVE_FILE_NAME", "downloaded.html")
+    files = list_html_files(FOLDER_ID)
+    if not files:
+        print("⚠️ No HTML files found")
+        sys.exit(0)
 
-    if not FILE_ID:
-        print("❌ 缺少环境变量 GDRIVE_FILE_ID")
-        sys.exit(1)
+    safe_files = []
+    for f in files:
+        safe_name = f['name'].replace(" ", "-")
+        download_file(f['id'], safe_name)
+        safe_files.append(safe_name)
 
-    download_file(FILE_ID, FILE_NAME)
+    # 生成首页导航
+    index_content = "<!DOCTYPE html><html><head><title>Reading Glasses</title></head><body>\n<h1>Reading Glasses</h1>\n<ul>\n"
+    for fname in safe_files:
+        index_content += f'<li><a href="{fname}">{fname}</a></li>\n'
+    index_content += "</ul>\n</body></html>"
+    with open("index.html", "w", encoding="utf-8") as f:
+        f.write(index_content)
+    print("✅ index.html generated")
+
+    # 生成每个 HTML 页面底部随机内部链接（3~5 个）
+    for fname in safe_files:
+        with open(fname, "r", encoding="utf-8") as f:
+            content = f.read()
+        other_files = [x for x in safe_files if x != fname]
+        num_links = min(5, len(other_files))
+        random_links = random.sample(other_files, num_links)
+        links_html = "<footer><ul>\n" + "\n".join([f'<li><a href="{x}">{x}</a></li>' for x in random_links]) + "\n</ul></footer>"
+        content += links_html
+        with open(fname, "w", encoding="utf-8") as f:
+            f.write(content)
+    print("✅ Bottom random internal links updated (3~5 per page)")
