@@ -155,18 +155,24 @@ with open("index.html", "w", encoding="utf-8") as f:
 print("✅ index.html (full site map) generated")
 
 # ------------------------
-# 每个页面底部随机内部链接（4~6 条），只调用本次 safe_files
 # ------------------------
-for fname in safe_files:
+# 每个页面底部随机内部链接（4~6 条），全量刷新所有 HTML
+# ------------------------
+all_html_files = [f for f in os.listdir(".") if f.endswith(".html") and f != "index.html"]
+
+for fname in all_html_files:
     with open(fname, "r", encoding="utf-8") as f:
         content = f.read()
-    other_files = [x for x in safe_files if x != fname]
+
+    # 排除当前页面，随机选择 4~6 条其他页面
+    other_files = [x for x in all_html_files if x != fname]
     num_links = min(len(other_files), random.randint(4, 6))
     if num_links > 0:
         random_links = random.sample(other_files, num_links)
         links_html = "<footer><ul>\n" + "\n".join([f'<li><a href="{x}">{x}</a></li>' for x in random_links]) + "\n</ul></footer>"
         content += links_html
+
     with open(fname, "w", encoding="utf-8") as f:
         f.write(content)
 
-print("✅ Bottom random internal links updated (4~6 per page, safe_files only)")
+print("✅ Bottom random internal links updated for all pages (4~6 each, full refresh)")
