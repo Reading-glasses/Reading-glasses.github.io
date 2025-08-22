@@ -156,16 +156,17 @@ print("✅ index.html (full site map) generated")
 
 # ------------------------
 # ------------------------
-# 每个页面底部随机内部链接（4~6 条），全量刷新所有 HTML
+# ------------------------
+# 底部随机内部链接（全量刷新 4~6 条）
 # ------------------------
 all_html_files = [f for f in os.listdir(".") if f.endswith(".html") and f != "index.html"]
 
 for fname in all_html_files:
+    # 使用 errors="replace" 遇到非法字符显示为 �
     with open(fname, "r", encoding="utf-8", errors="replace") as f:
-    content = f.read()
+        content = f.read()
 
-
-    # 排除当前页面，随机选择 4~6 条其他页面
+    # 排除当前文件，随机选择 4~6 个内部链接
     other_files = [x for x in all_html_files if x != fname]
     num_links = min(len(other_files), random.randint(4, 6))
     if num_links > 0:
