@@ -24,36 +24,50 @@ if not FOLDER_ID:
     print("❌ GDRIVE_FOLDER_ID not found")
     sys.exit(1)
 
-# 获取 HTML 文件列表
-def list_html_files(folder_id):
+# 获取文件列表（HTML 和 Google Docs）
+def list_files(folder_id):
     results = service.files().list(
-        q=f"'{folder_id}' in parents and mimeType='text/html'",
+        q=f"'{folder_id}' in parents and (mimeType='text/html' or mimeType='application/vnd.google-apps.document')",
         pageSize=1000,
-        fields="files(id, name)"
+        fields="files(id, name, mimeType)"
     ).execute()
     return results.get('files', [])
 
-# 下载文件
-def download_file(file_id, file_name):
+# 下载 HTML 文件
+def download_html_file(file_id, file_name):
     request = service.files().get_media(fileId=file_id)
     fh = io.FileIO(file_name, 'wb')
     downloader = MediaIoBaseDownload(fh, request)
     done = False
     while not done:
-        status, done = downloader.next_chunk()
+        _, done = downloader.next_chunk()
     print(f"✅ Downloaded {file_name}")
+
+# 导出 Google Docs 为 HTML
+def export_google_doc(file_id, file_name):
+    request = service.files().export_media(fileId=file_id, mimeType='text/html')
+    fh = io.FileIO(file_name, 'wb')
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while not done:
+        _, done = downloader.next_chunk()
+    print(f"✅ Exported Google Doc to {file_name}")
 
 # 主程序
 if __name__ == "__main__":
-    files = list_html_files(FOLDER_ID)
+    files = list_files(FOLDER_ID)
+    print("Found files:", [f['name'] for f in files])
     if not files:
-        print("⚠️ No HTML files found")
+        print("⚠️ No files found")
         sys.exit(0)
 
     safe_files = []
     for f in files:
-        safe_name = f['name'].replace(" ", "-")
-        download_file(f['id'], safe_name)
+        safe_name = f['name'].replace(" ", "-") + ".html"
+        if f['mimeType'] == 'text/html':
+            download_html_file(f['id'], safe_name)
+        else:
+            export_google_doc(f['id'], safe_name)
         safe_files.append(safe_name)
 
     # 生成首页导航
@@ -65,7 +79,7 @@ if __name__ == "__main__":
         f.write(index_content)
     print("✅ index.html generated")
 
-    # 生成每个 HTML 页面底部随机内部链接（3~5 个）
+    # 每个页面底部随机内部链接（3~5 个）
     for fname in safe_files:
         with open(fname, "r", encoding="utf-8") as f:
             content = f.read()
